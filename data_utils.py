@@ -101,12 +101,28 @@ def load_tracks(path="data/spotify_tracks.csv"):
     return clean_tracks(df)
 
 
+
 def get_data_quality_report(df):
-    """Summarize the dataset for cleaning verification."""
+    """Summarize dataset quality for cleaning verification."""
+    missing_by_column = df.isna().sum()
+    missing_percent = (
+        (missing_by_column / len(df) * 100).round(2)
+        if len(df) > 0
+        else missing_by_column.astype(float)
+    )
+
     return {
         "Total rows": len(df),
         "Total columns": len(df.columns),
         "Duplicate rows": int(df.duplicated().sum()),
-        "Missing values": int(df.isna().sum().sum()),
-        "Missing values by column": df.isna().sum().to_dict(),
+        "Total missing values": int(missing_by_column.sum()),
+        "Columns with missing values": int(
+            (missing_by_column > 0).sum()
+        ),
+        "Missing values by column": missing_by_column[
+            missing_by_column > 0
+        ].to_dict(),
+        "Missing percentage by column": missing_percent[
+            missing_by_column > 0
+        ].to_dict(),
     }
