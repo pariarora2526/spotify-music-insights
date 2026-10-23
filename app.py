@@ -1,6 +1,8 @@
 
 import streamlit as st
-import pandas as pd
+
+from data_utils import load_tracks
+from table_view import render_track_explorer
 
 st.set_page_config(
     page_title="Spotify Music Insights",
@@ -10,25 +12,14 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/spotify_tracks.csv")
-    return df.drop(columns=["Unnamed: 0"], errors="ignore")
+    return load_tracks()
 
 df = load_data()
 
 st.title("🎵 Spotify Music Insights")
 st.write("Explore tracks, artists, genres, and audio features.")
 
-# Sidebar filters
-st.sidebar.header("Filters")
-
-genres = sorted(df["track_genre"].dropna().unique())
-selected_genres = st.sidebar.multiselect(
-    "Choose genres",
-    genres,
-    default=genres[:5]
-)
-
-filtered_df = df[df["track_genre"].isin(selected_genres)]
+filtered_df = render_track_explorer(df)
 
 # KPI cards
 c1, c2, c3 = st.columns(3)
@@ -52,9 +43,6 @@ st.dataframe(
 
 st.subheader("Popularity Distribution")
 st.bar_chart(filtered_df["popularity"].value_counts().sort_index())
-
-st.subheader("Explore the Dataset")
-st.dataframe(filtered_df.head(100), use_container_width=True)
 
 st.download_button(
     "Download filtered data as CSV",
