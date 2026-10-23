@@ -1,3 +1,4 @@
+
 from pathlib import Path
 
 import pandas as pd
@@ -22,38 +23,90 @@ NUMERIC_COLUMNS = [
 
 
 def clean_tracks(df):
-    """Normalize column names, text, and known numeric fields."""
+    """Clean Spotify track data without deleting incomplete tracks."""
     cleaned = df.copy()
-    cleaned.columns = [str(column).strip() for column in cleaned.columns]
 
-    index_columns = [
-        column
+    # Standardize column names.
+    cleaned.columns = [
+        str(column).strip().lower().replace(" ", "_")
         for column in cleaned.columns
-        if column.lower() == "unnamed: 0"
+    ]
+
+    # Remove unnecessary CSV index columns.
+    index_columns = [
+        column for column in cleaned.columns
+        if column.startswith("unnamed:")
     ]
     cleaned = cleaned.drop(columns=index_columns)
 
-    text_columns = cleaned.select_dtypes(include=["object", "string"]).columns
-    for column in text_columns:
-        cleaned[column] = cleaned[column].astype("string").str.strip()
-        cleaned[column] = cleaned[column].replace("", pd.NA)
+    # Clean text values.
+    text_columns = cleaned.select_dtypes(
+        include=["object", "string"]
+    ).columns
 
+    for column in text_columns:
+        cleaned[column] = (
+            cleaned[column]
+            .astype("string")
+            .str.strip()
+            .replace("", pd.NA)
+        )
+
+    # Convert numeric columns safely.
     for column in NUMERIC_COLUMNS:
         if column in cleaned.columns:
-            cleaned[column] = pd.to_numeric(cleaned[column], errors="coerce")
+            cleaned[column] = pd.to_numeric(
+                cleaned[column], errors="coerce"
+            )
 
+    # Validate popularity values.
+    if "popularity" in cleaned.columns:
+        invalid = ~cleaned["popularity"].between(0, 100)
+        cleaned.loc[invalid, "popularity"] = pd.NA
+
+    # Validate track duration.
+    if "duration_ms" in cleaned.columns:
+        invalid = cleaned["duration_ms"] <= 0
+        cleaned.loc[invalid, "duration_ms"] = pd.NA
+
+    # Standardize explicit-content values.
     if "explicit" in cleaned.columns:
-        explicit_values = cleaned["explicit"].astype("string").str.lower()
-        cleaned["explicit"] = explicit_values.map(
-            {"true": True, "false": False, "1": True, "0": False}
-        ).astype("boolean")
+        values = cleaned["explicit"].astype("string").str.lower()
+        cleaned["explicit"] = values.map({
+            "true": True,
+            "false": False,
+            "1": True,
+            "0": False,
+        }).astype("boolean")
 
-    return cleaned.drop_duplicates().reset_index(drop=True)
+    # Remove exact duplicate rows only.
+    cleaned = cleaned.drop_duplicates()
+
+    return cleaned.reset_index(drop=True)
 
 
 def load_tracks(path="data/spotify_tracks.csv"):
-    """Load the Spotify CSV relative to this project and clean it."""
+    """Load and clean the Spotify dataset."""
     csv_path = Path(path)
+
     if not csv_path.is_absolute():
         csv_path = Path(__file__).resolve().parent / csv_path
-    return clean_tracks(pd.read_csv(csv_path))
+
+    if not csv_path.exists():
+        raise FileNotFoundError(
+            f"Spotify dataset not found: {csv_path}"
+        )
+
+    df = pd.read_csv(csv_path)
+    return clean_tracks(df)
+
+
+def get_data_quality_report(df):
+    """Summarize the dataset for cleaning verification."""
+    return {
+        "Total rows": len(df),
+        "Total columns": len(df.columns),
+        "Duplicate rows": int(df.duplicated().sum()),
+        "Missing values": int(df.isna().sum().sum()),
+        "Missing values by column": df.isna().sum().to_dict(),
+    }
