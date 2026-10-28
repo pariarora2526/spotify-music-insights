@@ -1,4 +1,6 @@
+import base64
 import html
+import os
 
 import pandas as pd
 import plotly.express as px
@@ -59,6 +61,17 @@ def chart_style(fig, height=340):
     return fig
 
 
+# Helper to convert local image to Base64 for inline side-by-side rendering
+def get_image_base64(path):
+    if os.path.exists(path):
+        with open(path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode()
+    return ""
+
+
+logo_b64 = get_image_base64("assets/soundscape_logo.png")
+
+
 # ---------- VISUAL SYSTEM ----------
 st.markdown(
     """
@@ -89,9 +102,9 @@ st.markdown(
     [data-testid="stMetricLabel"] { color: #b3b3b3 !important; font-size: .85rem !important; }
     [data-testid="stMetricValue"] { color: #ffffff !important; font-family: 'Space Grotesk',sans-serif; font-size: 1.8rem !important; font-weight: 700; }
     [data-testid="stMetricDelta"] { color: var(--green) !important; }
-    .brand { display:flex; align-items:center; gap:10px; padding: 0.25rem 0 1.2rem; }
-    .brand-mark { width:38px; height:38px; border-radius:50%; background:var(--green); color:#050505; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:800; }
-    .brand-name { font-family:'Space Grotesk',sans-serif; font-size:1.28rem; font-weight:800; letter-spacing:-.6px; }
+    .brand { display:flex; align-items:center; gap:12px; padding: 0.25rem 0 1.2rem; }
+    .brand-mark { width:42px; height:42px; flex:0 0 42px; object-fit:contain; border-radius:10px; }
+    .brand-name { font-family:'Space Grotesk',sans-serif; font-size:1.45rem; font-weight:800; letter-spacing:-.6px; line-height:1; }
     .brand-name span { color:var(--green); }
     .side-label { color:#777 !important; text-transform:uppercase; letter-spacing:1.6px; font-size:.69rem; font-weight:800; margin:1rem 0 .45rem; }
     .side-note { background:#202020; border-radius:12px; padding:14px; color:#aaa; font-size:.8rem; line-height:1.55; margin-top:1rem; }
@@ -101,10 +114,6 @@ st.markdown(
     .hero-label { font-size:.72rem; color:#1ed760; letter-spacing:2px; font-weight:800; text-transform:uppercase; margin-bottom:10px; }
     .hero-title { font-family:'Space Grotesk',sans-serif; font-size:clamp(2rem,3.3vw,3.1rem); line-height:1.08; color:white; font-weight:700; letter-spacing:-1.3px; }
     .hero-copy { color:#c0c0c0; max-width:640px; margin-top:12px; line-height:1.6; font-size:.95rem; }
-    .hero-art { height:170px; border-radius:16px; background:linear-gradient(145deg,#2e5c40,#1ed760 48%,#7c45a5 100%); display:flex; align-items:center; justify-content:center; box-shadow:0 16px 32px rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.25); position:relative; overflow:hidden; }
-    .hero-art:before,.hero-art:after { content:""; position:absolute; border:1px solid rgba(255,255,255,.3); border-radius:50%; width:160px; height:160px; }
-    .hero-art:after { width:110px; height:110px; }
-    .disc { width:76px; height:76px; border-radius:50%; background:radial-gradient(circle,#101010 0 10%,#ddd 11% 13%,#111 14% 100%); z-index:1; box-shadow:0 0 0 14px rgba(0,0,0,.14),0 0 0 28px rgba(0,0,0,.1); }
     .section-head { margin:1.8rem 0 .3rem; font-family:'Space Grotesk',sans-serif; font-size:1.45rem; font-weight:700; color:#f5f5f5; }
     .section-sub { color:#999; font-size:.87rem; margin-bottom:1rem; }
     .panel-title { font-size:1rem; font-weight:700; color:#f5f5f5; margin-bottom:2px; }
@@ -124,7 +133,7 @@ st.markdown(
     .stButton button { border-radius:24px; }
     hr { border-color:#292929; }
     #MainMenu, footer { visibility:hidden; }
-    @media(max-width:760px) { .hero { padding:22px; } .hero-art { height:125px; } .topline { align-items:flex-start; flex-direction:column; } }
+    @media(max-width:760px) { .hero { padding:22px; } .topline { align-items:flex-start; flex-direction:column; } }
     </style>
     """,
     unsafe_allow_html=True,
@@ -133,15 +142,26 @@ st.markdown(
 
 # ---------- SIDEBAR ----------
 with st.sidebar:
-    st.markdown(
-        """
-        <div class="brand">
-          <div class="brand-mark">≋</div>
-          <div class="brand-name">Sound<span>Scape</span></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    if logo_b64:
+        st.markdown(
+            f"""
+            <div class="brand">
+              <img class="brand-mark" src="data:image/png;base64,{logo_b64}" alt="SoundScape Logo">
+              <div class="brand-name">Sound<span>Scape</span></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div class="brand">
+              <div class="brand-name">Sound<span>Scape</span></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
     st.markdown('<div class="side-label">Workspace</div>', unsafe_allow_html=True)
     st.caption("Music overview")
     st.caption("Genre discovery")
@@ -173,23 +193,19 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-hero_left, hero_right = st.columns([1.65, .75], vertical_alignment="center")
-with hero_left:
-    st.markdown(
-        """
-        <div class="hero">
-          <div class="hero-label">SoundScape · Explore your music</div>
-          <div class="hero-title">Your music.<br>In a new light.</div>
-          <div class="hero-copy">
-            Discover the artists, genres and audio characteristics behind
-            your collection. Explore the data, find patterns and see music differently.
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-with hero_right:
-    st.markdown('<div class="hero-art"><div class="disc"></div></div>', unsafe_allow_html=True)
+st.markdown(
+    """
+    <div class="hero">
+      <div class="hero-label">SoundScape · Explore your music</div>
+      <div class="hero-title">Your music.<br>In a new light.</div>
+      <div class="hero-copy">
+        Discover the artists, genres and audio characteristics behind
+        your collection. Explore the data, find patterns and see music differently.
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown('<div class="section-head">Your library at a glance</div>', unsafe_allow_html=True)
 st.markdown('<div class="section-sub">A live snapshot calculated from your dataset.</div>', unsafe_allow_html=True)
@@ -467,7 +483,6 @@ with artist_tab:
                 on_select="rerun", selection_mode="points", width="stretch",
             )
 
-        # Step 1 interaction: selecting a bar reveals matching real tracks.
         selected_artist = None
         if tracks_event.selection.points:
             selected_artist = tracks_event.selection.points[0].get("y")
